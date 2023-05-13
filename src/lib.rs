@@ -178,7 +178,13 @@ pub mod json_ser {
                 }
                 // field name and string conflict.
                 (val, x) if flag_has(x, STRING) => {
-                    self.current.push_str(val);
+                    if val == "\\" {
+                        self.current.push_str("\\\\");
+                        self.expecting = STRING;
+                    } else {
+                        self.current.push_str(val);
+                        self.expecting = END_QUOTE | STRING | ESCAPE_CHAR;
+                    }
                 }
                 (field_name, x) if flag_has(x, FIELD_NAME) && fieldname_does_not_start_with_capital(field_name) => {
                     if field_name.is_empty() { return std::fmt::Result::Ok(()) }
@@ -246,6 +252,13 @@ mod tests {
         let obj = Basic { hello: "world".to_string() };
         let json_str = json_ser::serialize(&obj);
         assert_eq!(json_str, r#"{"hello":"world"}"#);
+    }
+
+    #[test]
+    fn escaping_works() {
+        let obj = Basic { hello: "\"".to_string() };
+        let json_str = json_ser::serialize(&obj);
+        assert_eq!(json_str, r#"{"hello":"\\""}"#);
     }
 
     #[test]
